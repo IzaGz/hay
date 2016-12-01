@@ -1,3 +1,3 @@
-# hay [![CircleCI](https://circleci.com/gh/rynclark/hay/tree/master.svg?style=svg)](https://circleci.com/gh/rynclark/hay/tree/master)
+# hay [![CircleCI](https://circleci.com/gh/hayjs/hay/tree/master.svg?style=svg)](https://circleci.com/gh/hayjs/hay/tree/master)
 
 first release coming very shortly
