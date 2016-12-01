@@ -9,7 +9,7 @@
     "hay": "./bin/hay.js"
   },
   "repository": {
-    "url": "https://github.com/rynclark/hay.git",
+    "url": "https://github.com/hayjs/hay.git",
     "type": "git"
   },
   "scripts": {
