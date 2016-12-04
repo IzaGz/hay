@@ -1,10 +1,11 @@
 import { Config } from './config';
 import { FileSystem } from './files/file-system';
 import { Reporter } from './reporter';
-import * as commander from 'commander';
 
-import invariant from './invariant';
+import { invariant } from './invariant';
 import { HayCommand, HayCommandInstance } from './cli';
+
+import { MarkedTemplateParser } from './parser/marked';
 
 import {
   EngineConstructor,
@@ -24,9 +25,6 @@ export interface HayFileSystem {
   writeFile: (...args: any[]) => Promise<any>;
 }
 
-const engineStore: Map<string, EngineConstructor> = new Map<string, EngineConstructor>();
-const parserStore: Map<string, ParserConstructor> = new Map<string, ParserConstructor>();
-
 export class Hay {
   public config: Config;
   public engine: TemplateEngine;
@@ -36,22 +34,16 @@ export class Hay {
   public server: any;
   public startTime: number;
 
-  constructor(public program: commander.ICommand) {
+  constructor(private args: any) {
     this.config = new Config();
     this.reporter = new Reporter({ suppressLevel: this.config.values.suppressLevel });
+
+    this.config.plugins.parser['marked'] = MarkedTemplateParser;
 
     this.config.setReporter(this.reporter);
   }
 
-  static registerTemplateEngine<T>(name: string, engine: EngineConstructor) {
-    engineStore.set(name, engine);
-  }
-
-  static registerTemplateParser(name: string, parser: ParserConstructor) {
-    parserStore.set(name, parser);
-  }
-
-  public async run(command: HayCommand, startTime: number) {
+  public async run(command: HayCommand, startTime: number): Promise<any> {
     this.setTemplateEngine(this.config.values.engine);
     this.setTemplateParsers(this.config.values.parsers);
 
@@ -61,7 +53,7 @@ export class Hay {
 
     let commandInstance: HayCommandInstance = new command(this);
 
-    if ((<any>this.program).watch && commandInstance.watch)  {
+    if (this.args.watch && commandInstance.watch)  {
       return await commandInstance.watch();
     }
     return await commandInstance.run();
@@ -69,11 +61,11 @@ export class Hay {
 
   public setTemplateEngine(engine: string) {
     invariant(
-      engineStore.has(engine),
+      this.config.plugins.engine[engine],
       `cannot find template engine ${engine}`
     );
 
-    let engineConstructor: EngineConstructor = <any> engineStore.get(engine);
+    let engineConstructor: EngineConstructor = <any> this.config.plugins.engine[engine];
 
     this.engine = new engineConstructor(this);
   }
@@ -81,11 +73,11 @@ export class Hay {
   public setTemplateParsers(parsers: string[]) {
     parsers.forEach((parser: string) => {
       invariant(
-        parserStore.has(parser),
+        this.config.plugins.parser[parser],
         `cannot find template parser ${parser}`
       );
 
-      let parserConstructor: ParserConstructor = <any> parserStore.get(parser);
+      let parserConstructor: ParserConstructor = <any> this.config.plugins.parser[parser];
 
       this.parsers.push(new parserConstructor(this));
     });
