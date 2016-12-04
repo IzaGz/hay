@@ -1,12 +1,16 @@
-import * as marked from 'marked';
 import { AllHtmlEntities, Entities } from 'html-entities';
 
 import { Hay } from '../hay';
-import invariant from '../invariant';
+import { invariant } from '../invariant';
 import { TemplateParser, FileInfo } from '../template';
+
+const marked = require('marked');
 
 const highlighters: { [x: string]: (code: any, lang: string, callback: Function) => any } = {
   'highlight.js': (code, lang) => {
+    if (!lang) {
+      return code;
+    }
     return require('highlight.js').highlight(lang, code).value;
   },
   'pygemntize': (code, lang, callback) => {
@@ -33,6 +37,12 @@ export class MarkedTemplateParser extends TemplateParser {
         if (!info.contents) {
           info.contents = '';
         }
+        const highlight = highlighters[this.hay.config.values.highlighter];
+
+        invariant(
+          highlight,
+          `cannot find highlighter ${this.hay.config.values.highlighter}`
+        );
         marked(info.contents, (err: any, content: string) => {
           if (err) return reject(err);
 
@@ -61,5 +71,3 @@ export class MarkedTemplateParser extends TemplateParser {
     });
   }
 }
-
-Hay.registerTemplateParser('marked', MarkedTemplateParser);
