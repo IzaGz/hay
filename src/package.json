@@ -1,0 +1,38 @@
+{
+  "name": "hay",
+  "version": "0.0.0",
+  "description": "static website builder for node",
+  "main": "bundle/hay.umd.js",
+  "module": "index.js",
+  "types": "index.d.ts",
+  "author": "Ryan Clark",
+  "license": "MIT",
+  "bin": {
+    "hay": "bundle/hay.cli.umd.js"
+  },
+  "repository": {
+    "url": "https://github.com/hayjs/hay.git",
+    "type": "git"
+  },
+  "dependencies": {
+    "ansi-styles": "^2.2.1",
+    "chokidar": "^1.6.1",
+    "commander": "^2.9.0",
+    "express": "^4.14.0",
+    "glob": "^7.1.1",
+    "highlight.js": "^9.8.0",
+    "html-entities": "^1.2.0",
+    "js-yaml": "^3.7.0",
+    "liquid-node": "^2.6.1",
+    "marked": "^0.3.6",
+    "mime": "^1.3.4",
+    "nunjucks": "^3.0.0",
+    "progress": "^1.1.8",
+    "rimraf": "^2.5.4",
+    "socket.io": "^1.5.1",
+    "tiny-lr": "^1.0.3",
+    "webpack": "2.1.0-beta.25",
+    "webpack-dev-middleware": "1.8.4",
+    "webpack-hot-middleware": "^2.13.2"
+  }
+}
