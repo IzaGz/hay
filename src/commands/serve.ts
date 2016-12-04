@@ -1,9 +1,8 @@
 import * as commander from 'commander';
-import * as express from 'express';
-import * as tinylr from 'tiny-lr';
 import * as path from 'path';
 import * as mime from 'mime';
 
+const express: any = require('express');
 
 import { Hay } from '../hay';
 import { BaseCommand } from './base';
@@ -28,9 +27,9 @@ export class ServeCommand extends BaseCommand {
 
   public async run() {
     let server: any = express();
+    await this.baleCommand.watch();
 
     if (this.hay.config.webpackConfig) {
-      await this.baleCommand.watch();
 
       const webpack: any = require('webpack');
       const webpackMiddleware: any = require('webpack-dev-middleware');
@@ -78,12 +77,6 @@ export class ServeCommand extends BaseCommand {
       ));
 
       let reloadLogger = this.hay.reporter.i({ gutter: { styles: ['yellow'], text: 'reloader' } });
-
-      this.hay.server = tinylr();
-
-      this.hay.server.listen(this.hay.config.values.lrPort, () => {
-        reloadLogger('started');
-      });
     }
 
     const port: number = this.hay.config.values.port;
