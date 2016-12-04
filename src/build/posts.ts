@@ -118,9 +118,5 @@ export class PostBuilder extends BaseBuilder {
       fileName: changedFile,
       contents
     });
-
-    if (this.hay.server) {
-      this.hay.server.notifyClients(['index.html']);
-    }
   }
 }
