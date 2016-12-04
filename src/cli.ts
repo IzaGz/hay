@@ -1,6 +1,6 @@
 import * as commander from 'commander';
 import { Hay } from './hay';
-import { commands, aliases } from './commands';
+import { commands, aliases } from './commands/index';
 const pkgInfo = require('../package.json');
 
 let startTime: number = Date.now();
@@ -65,7 +65,6 @@ if (commandName === 'help' || args.includes('--help') || args.includes('-h')) {
 }
 
 commander.parse([node, hayCmd, commandName].concat(args));
-(<any> commander).args = commander.args.concat(endArgs);
 
 if (!command) {
   class NoCommand {
@@ -77,7 +76,7 @@ if (!command) {
   command = NoCommand;
 }
 
-let hay: Hay = new Hay(commander);
+let hay: Hay = new Hay(commander.args.concat(endArgs));
 
 if (command && commandName !== name && name) {
   hay.reporter.log(`<dim>Using ${commandName} (alias ${name} => ${commandName})</dim>`);
