@@ -8,6 +8,7 @@ import { LayoutsBuilder } from '../build/layouts';
 import { PartialsBuilder } from '../build/partials';
 import { PostBuilder } from '../build/posts';
 import { CopyBuilder } from '../build/copy';
+import { BaseBuilder } from '../build/base';
 
 
 export class BaleCommand extends BaseCommand {
@@ -41,12 +42,7 @@ export class BaleCommand extends BaseCommand {
     await this.hay.fileSystem.mkDir(destination);
     await this.hay.fileSystem.unlink(destination);
 
-    await super.queue([
-      this.partialsBuilder,
-      this.layoutsBuilder,
-      this.postBuilder,
-      this.copyBuilder
-    ]);
+    await super.queue(this.getBuilders());
 
     let time: string = ((Date.now() - this.hay.startTime) / 1000).toFixed(2);
     this.hay.reporter.info(`build took ${time}s\n`);
@@ -61,12 +57,25 @@ export class BaleCommand extends BaseCommand {
 
     this.hay.reporter.info('watching for changes..');
 
-    await super.watch([
-      this.partialsBuilder,
-      this.layoutsBuilder,
-      this.postBuilder,
-      this.copyBuilder
-    ]);
+    await super.watch(this.getBuilders());
+  }
+
+  private getBuilders(): BaseBuilder[] {
+    let builders: BaseBuilder[] = [];
+
+    if (this.hay.config.values.partialsDir) {
+      builders.push(this.partialsBuilder);
+    }
+    if (this.hay.config.values.layoutsDir) {
+      builders.push(this.layoutsBuilder);
+    }
+    if (this.hay.config.values.postsDir) {
+      builders.push(this.postBuilder);
+    }
+
+    builders.push(this.copyBuilder);
+
+    return builders;
   }
 }
 
