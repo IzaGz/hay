@@ -44,6 +44,9 @@ export abstract class BaseBuilder {
   }
 
   private checkExtensions(extensions: string[]): (file: string) => boolean {
+    if (!extensions) {
+      return (file: string) => false;
+    }
     return (file: string) => extensions.includes(this.hay.fileSystem.getFileExtension(file));
   }
 
