@@ -17,7 +17,7 @@
     "clean": "rimraf dist && mkdir -p dist",
     "copy": "cp src/package.json dist/package.json",
     "prestart": "yarn run clean && yarn run copy",
-    "test": "mocha --compilers ts:ts-node/register"
+    "test": "TS_NODE_PROJECT=tsconfig.test.json mocha --compilers ts:ts-node/register"
   },
   "devDependencies": {
     "@types/ansi-styles": "^2.0.30",
