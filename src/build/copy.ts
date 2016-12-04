@@ -33,9 +33,18 @@ export class CopyBuilder extends BaseBuilder {
           cwd: config.source,
           nodir: true,
           ignore: [
-            path.relative(config.source, config.partialsDir) + '/**/*',
-            path.relative(config.source, config.postsDir) + '/**/*',
-            path.relative(config.source, config.layoutsDir) + '/**/*',
+            config.partialsDir ?
+              path.relative(config.source, config.partialsDir) + '/**/*'
+              :
+              '',
+            config.postsDir ?
+              path.relative(config.source, config.postsDir) + '/**/*'
+              :
+              '',
+            config.layoutsDir ?
+              path.relative(config.source, config.layoutsDir) + '/**/*'
+              :
+              '',
             ...config.exclude
           ]
         },
@@ -49,8 +58,9 @@ export class CopyBuilder extends BaseBuilder {
   }
 
   async parseOtherFile(file: string): Promise<any> {
-    // let info: FileInfo = await this.hay.engine.extractInfo(file);
-    // return this.hay.engine.parse(info);
+    if (file[0] === '_') {
+      return Promise.resolve();
+    }
     const config: ConfigValues =  this.hay.config.values;
     const fileSystem: HayFileSystem = this.hay.fileSystem;
 
@@ -67,11 +77,14 @@ export class CopyBuilder extends BaseBuilder {
       fileExt: this.hay.fileSystem.getFileExtension(file)
     };
 
-    let extensions: string[] = [
-      ...config.layoutExtensions,
-      ...config.markdownExtensions,
-      ...config.partialExtensions
-    ];
+    let extensions: string[] = [...config.markdownExtensions];
+
+    if (config.layoutsDir && config.layoutExtensions) {
+      extensions = extensions.concat(config.layoutExtensions);
+    }
+    if (config.partialsDir && config.partialExtensions) {
+      extensions = extensions.concat(config.partialExtensions);
+    }
 
     if (extensions.includes(<string>info.fileExt)) {
       let baseName: string = path.basename(file, path.extname(file));
@@ -94,12 +107,12 @@ export class CopyBuilder extends BaseBuilder {
 
       FILE_REGISTRY.set(
         path.resolve(config.source, file),
-        path.resolve(destinationFolder, `${info.shortName}.html`)
+        path.resolve(destinationFolder, `${fileSystem.removeExtension(info.output.fileName)}.html`)
       );
 
       await fileSystem.mkDir(destinationFolder);
       await fileSystem.writeFile(
-        path.resolve(destinationFolder, `${info.shortName}.html`),
+        path.resolve(destinationFolder, `${fileSystem.removeExtension(info.output.fileName)}.html`),
         output
       );
     } else {
@@ -135,9 +148,18 @@ export class CopyBuilder extends BaseBuilder {
     let watcher: FSWatcher = chokidar.watch(this.config.directory, {
       ignored: [
         /[\/\\]\./,
-        path.relative(config.source, config.partialsDir) + '/**/*',
-        path.relative(config.source, config.postsDir) + '/**/*',
-        path.relative(config.source, config.layoutsDir) + '/**/*',
+        config.partialsDir ?
+          path.relative(config.source, config.partialsDir) + '/**/*'
+          :
+          '',
+        config.postsDir ?
+          path.relative(config.source, config.postsDir) + '/**/*'
+          :
+          '',
+        config.layoutsDir ?
+          path.relative(config.source, config.layoutsDir) + '/**/*'
+          :
+          '',
         ...config.exclude
       ],
       persistent: true,
@@ -181,9 +203,5 @@ export class CopyBuilder extends BaseBuilder {
 
   private async addOrChange(changedFile: string): Promise<void> {
     await this.parseOtherFile(changedFile);
-
-    if (this.hay.server) {
-      this.hay.server.notifyClients(['index.html']);
-    }
   }
 }
