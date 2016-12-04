@@ -2,7 +2,7 @@ import * as liquid from 'liquid-node';
 
 import { Hay } from '../hay';
 import { TemplateEngine, FileInfo } from '../template';
-import invariant from '../invariant';
+import { invariant } from '../invariant';
 
 const engine: liquid.Engine = new liquid.Engine();
 const CACHE: Map<string, LiquidTemplate> = new Map<string, LiquidTemplate>();
@@ -34,11 +34,10 @@ export class LiquidTemplate {
 
       let parentTemplate: LiquidTemplate = <LiquidTemplate> CACHE.get(parentFileName);
 
-      return await parentTemplate.render({
-        ...data,
+      return await parentTemplate.render(Object.assign({}, data, {
         page: data.page || this.info.options,
         content: compiledTemplate
-      });
+      }));
     }
 
     return compiledTemplate;

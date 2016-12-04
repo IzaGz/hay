@@ -2,7 +2,7 @@ import * as nunjucks from 'nunjucks';
 
 import { Hay } from '../hay';
 import { TemplateEngine, FileInfo } from '../template';
-import invariant from '../invariant';
+import { invariant } from '../invariant';
 
 const CACHE: Map<string, NunjucksTemplate> = new Map<string, NunjucksTemplate>();
 
@@ -54,11 +54,10 @@ export class NunjucksTemplate {
 
       let parentTemplate: NunjucksTemplate = <NunjucksTemplate> CACHE.get(parentFileName);
 
-      return await parentTemplate.render({
-        ...data,
+      return await parentTemplate.render(Object.assign({}, data, {
         page: data.page || this.info.options,
         content: compiledTemplate
-      });
+      }));
     }
 
     return compiledTemplate;
