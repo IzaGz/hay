@@ -3,13 +3,6 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { Reporter } from './reporter';
 
-const CONFIG_NAMES: string[] = [
-  'hay.config.js',
-  'hay.config.json',
-  'hay.config.yml',
-  'config.yml'
-];
-
 export interface ConfigValues {
   autoPermalink: boolean;
   destination: string;
@@ -19,18 +12,18 @@ export interface ConfigValues {
   highlighter: string;
   markdownExtensions: string[];
   parsers: string[];
-  partialsDir: string;
-  partialExtensions: string[];
-  layoutsDir: string;
-  layoutExtensions: string[];
+  partialsDir?: string;
+  partialExtensions?: string[];
+  layoutsDir?: string;
+  layoutExtensions?: string[];
   lrPort: number,
   gfm: boolean;
   noProgress: boolean;
   pluginsDir: string[];
   pluginsFormat: string[];
   port: number;
-  postsDir: string;
-  postExtensions: string[];
+  postsDir?: string;
+  postExtensions?: string[];
   postOutput: string;
   source: string;
   suppressLevel: number;
@@ -45,20 +38,14 @@ const values: ConfigValues = {
   exclude: [],
   googleAnalytics: '',
   highlighter: 'highlight.js',
-  layoutsDir: '_layouts',
-  layoutExtensions: ['html'],
   lrPort: 35729,
   markdownExtensions: ['md'],
   parsers: ['marked'],
-  partialsDir: '_partials',
-  partialExtensions: ['html'],
-  pluginsDir: ['{hay}', '{cwd}/node_modules'],
-  pluginsFormat: ['hay-{prefix}-{name}', 'hay-{name}'],
+  pluginsDir: ['{cwd}/node_modules'],
+  pluginsFormat: ['hay-{name}-{prefix}'],
   gfm: true,
   noProgress: false,
   port: 3000,
-  postsDir: '_posts',
-  postExtensions: ['md'],
   postOutput: 'directory',
   source: '.',
   suppressLevel: 0,
@@ -69,10 +56,60 @@ interface ConfigLoaders {
   [x: string]: (filename: string) => any;
 }
 
+type pluginToLoad = {
+  prefix: string,
+  name: string,
+  loaded: boolean,
+  files?: string[]
+};
+
+const CONFIG_NAMES: string[] = [
+  'hay.config.js',
+  'hay.config.json',
+  'hay.config.yml',
+  'config.yml',
+  '.hayrc'
+];
+
+const merge = ([first, ...rest]): string[] => {
+  if (!first) {
+    return [];
+  } else if (!Array.isArray(first)) {
+    return [first, ...merge(rest)];
+  } else {
+    return [...merge(first), ...merge(rest)];
+  }
+}
+
+const combine = (join: string, ...args: string[][]): string[] => {
+  return [].concat(
+    ...(<any> args).reduce((into: string[], from: string[]) => {
+      return merge(into.map((nextKey: string) => {
+        return from.map((fromKey: string) => {
+          return [nextKey, fromKey].join(join);
+        })
+      }));
+    })
+  );
+}
+
+export interface Plugins {
+  engine: {
+    [x: string]: any;
+  };
+  parser: {
+    [x: string]: any;
+  };
+};
+
 export class Config {
   public reporter: Reporter;
   public values: ConfigValues = values;
   public webpackConfig: any;
+  public plugins: Plugins = {
+    engine: {},
+    parser: {}
+  };
 
   public async loadConfig(overrideObj: any = {}): Promise<any> {
     let files: ConfigValues[] = await Promise.all(CONFIG_NAMES.map((fileName: string) => this.loadFile(fileName)));
@@ -100,24 +137,31 @@ export class Config {
         text: 'source'
       }
     })(`<dim>${this.values.source}</dim>`);
-    reporter({
-      gutter: {
-        styles: ['gray'],
-        text: 'posts'
-      }
-    })(`<dim>${this.values.postsDir}</dim>`);
-    reporter({
-      gutter: {
-        styles: ['gray'],
-        text: 'layouts'
-      }
-    })(`<dim>${this.values.layoutsDir}</dim>`);
-    reporter({
-      gutter: {
-        styles: ['gray'],
-        text: 'partials'
-      }
-    })(`<dim>${this.values.partialsDir}</dim>\n`);
+    if (this.values.postsDir) {
+      reporter({
+        gutter: {
+          styles: ['gray'],
+          text: 'posts'
+        }
+      })(`<dim>${this.values.postsDir}</dim>`);
+    }
+    if (this.values.layoutsDir) {
+      reporter({
+        gutter: {
+          styles: ['gray'],
+          text: 'layouts'
+        }
+      })(`<dim>${this.values.layoutsDir}</dim>`);
+    }
+    if (this.values.partialsDir) {
+      reporter({
+        gutter: {
+          styles: ['gray'],
+          text: 'partials'
+        }
+      })(`<dim>${this.values.partialsDir}</dim>`);
+    }
+    reporter('\n');
     reporter({
       gutter: {
         styles: ['gray'],
@@ -130,9 +174,15 @@ export class Config {
     let cwd: string = process.cwd();
 
     this.values.source = path.resolve(cwd, this.values.source);
-    this.values.postsDir = path.resolve(this.values.source, this.values.postsDir);
-    this.values.layoutsDir = path.resolve(this.values.source, this.values.layoutsDir);
-    this.values.partialsDir = path.resolve(this.values.source, this.values.partialsDir);
+    if (this.values.postsDir) {
+      this.values.postsDir = path.resolve(this.values.source, this.values.postsDir);
+    }
+    if (this.values.layoutsDir) {
+      this.values.layoutsDir = path.resolve(this.values.source, this.values.layoutsDir);
+    }
+    if (this.values.partialsDir) {
+      this.values.partialsDir = path.resolve(this.values.source, this.values.partialsDir);
+    }
     this.values.destination = path.resolve(cwd, this.values.destination);
   }
 
@@ -149,95 +199,74 @@ export class Config {
     return this;
   }
 
-  private async loadPlugins() {
-    type pluginToLoad = {
-      prefix: string,
-      name: string,
-      loaded: boolean,
-      files?: string[]
-    };
+  private async loadPlugins(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let pluginsToLoad: pluginToLoad[] = [];
 
-    let pluginsToLoad: pluginToLoad[] = [];
+      // template engine
+      pluginsToLoad.push({ prefix: 'engine', name: this.values.engine, loaded: false });
+      // template parser
+      pluginsToLoad.push(...this.values.parsers.map((parser: string) => {
+        return { prefix: 'parser', name: parser, loaded: false };
+      }));
 
-    // template engine
-    pluginsToLoad.push({ prefix: 'engine', name: this.values.engine, loaded: false });
-    // template parser
-    pluginsToLoad.push(...this.values.parsers.map((parser: string) => {
-      return { prefix: 'parser', name: parser, loaded: false };
-    }));
+      let directories: string[] = this.values.pluginsDir.map(
+        (dir: string) => {
+          return dir
+            .replace(/{cwd}/gi, process.cwd);
+        });
 
-    let directories: string[] = this.values.pluginsDir.map(
-      (dir: string) => {
-        return dir
-          .replace(/{cwd}/gi, process.cwd)
-          .replace(/{hay}/gi, __dirname);
+      pluginsToLoad.forEach((plugin: pluginToLoad) => {
+        let folderNames: string[] = this.values.pluginsFormat.map((format: string) => {
+          return format
+            .replace(/{prefix}/gi, plugin.prefix)
+            .replace(/{name}/gi, plugin.name);
+        });
+
+        let files: string[] = merge([
+          // directory {dir}/{format}
+          combine('/', directories, folderNames),
+          // directory {dir}/{name}
+          combine('/', directories, [plugin.name]),
+          // directory {dir}/{prefix}/{format}
+          combine('/', directories, combine('/', [plugin.prefix], folderNames)),
+          // directory {dir}/{format}/{prefix}
+          combine('/', directories, combine('/', folderNames, [plugin.prefix]))
+        ]);
+
+        // allow the file.js as well as the file/ directory
+        files = combine('', files, ['.js', '']);
+
+        files.forEach((file: string) => {
+          if (plugin.loaded) {
+            return;
+          }
+
+          try {
+            const loadedPlugin: any = require(file);
+            plugin.loaded = true;
+            const key: string = Object.keys(loadedPlugin)[0];
+            const [type, name]: string[] = key.split(':');
+            this.plugins[type][name] = loadedPlugin[key];
+          } catch(e) {
+            if (file === '/Users/Ryan/projects/hayjs/hay.js.org/git/node_modules/hay-react-engine') {
+              console.log('hello', e);
+            }
+          }
+        });
       });
 
-    const merge = ([first, ...rest]): string[] => {
-      if (!first) {
-        return [];
-      } else if (!Array.isArray(first)) {
-        return [first, ...merge(rest)];
-      } else {
-        return [...merge(first), ...merge(rest)];
-      }
-    }
-
-    const combine = (join: string, ...args: string[][]): string[] => {
-      return [].concat(
-        ...(<any> args).reduce((into: string[], from: string[]) => {
-          return merge(into.map((nextKey: string) => {
-            return from.map((fromKey: string) => {
-              return [nextKey, fromKey].join(join);
-            })
-          }));
-        })
-      );
-    }
-
-    pluginsToLoad.forEach((plugin: pluginToLoad) => {
-      let folderNames: string[] = this.values.pluginsFormat.map((format: string) => {
-        return format
-          .replace(/{prefix}/gi, plugin.prefix)
-          .replace(/{name}/gi, plugin.name);
-      });
-
-      let files: string[] = merge([
-        // directory {dir}/{format}
-        combine('/', directories, folderNames),
-        // directory {dir}/{prefix}/{name}
-        combine('/', directories, [plugin.prefix], [plugin.name]),
-        // directory {dir}/{name}
-        combine('/', directories, [plugin.name]),
-        // directory {dir}/{prefix}/{format}
-        combine('/', directories, combine('/', [plugin.prefix], folderNames)),
-        // directory {dir}/{format}/{prefix}
-        combine('/', directories, combine('/', folderNames, [plugin.prefix]))
-      ]);
-
-      // allow the file.js as well as the file/ directory
-      files = combine('', files, ['.js', '']);
-
-      files.forEach((file: string) => {
-        if (plugin.loaded) {
-          return;
-        }
-
+      const webpackConfig: any = this.values.webpackConfig;
+      if (!!webpackConfig) {
         try {
-          require(file);
-          plugin.loaded = true;
-        } catch(e) {}
-      });
-    });
-
-    const webpackConfig: any = this.values.webpackConfig;
-    if (!!webpackConfig) {
-      try {
-        this.webpackConfig = require(path.resolve(process.cwd(), webpackConfig));
-      } catch(e) {
-        throw `could not find webpack config at ${webpackConfig}`;
+          this.webpackConfig = require(path.resolve(process.cwd(), webpackConfig));
+        } catch(e) {
+          throw `could not find webpack config at ${webpackConfig}`;
+        }
       }
-    }
+
+      resolve();
+    });
   }
 
   private async loadFile(filename: string): Promise<any> {
