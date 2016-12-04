@@ -5,14 +5,14 @@ import { ConfigValues } from './config';
 const TEMPLATE_HEADER = /^(?:\/\*)?(?:[\n]?---\n)([\s\S]*?)(?:\n[\s]*?---[\n]?)(?:\*\/)?/;
 
 export interface File {
-  path: string;
+  path?: string;
   contents: string;
   fileName: string;
   namespace?: string;
 }
 
 export interface FileInfo {
-  path: string;
+  path?: string;
   options?: FileOptions;
   contents?: string;
   fileName?: string;
@@ -80,14 +80,6 @@ export abstract class TemplateEngine {
       info.output.directory = '';
       info.output.fileName = `${noExt}.html`;
     }
-
-    info = await this.hay.parsers.reduce(
-      async (item: Promise<FileInfo>, task: TemplateParser) => {
-        await item;
-        return await task.run(info);
-      },
-      Promise.resolve(info)
-    );
 
     return info;
   }
