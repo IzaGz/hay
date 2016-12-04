@@ -44,7 +44,7 @@ export class FileSystem implements HayFileSystem {
   }
 
   public removeExtension(fileName: string): string {
-    return (<string> fileName.split('.').shift());
+    return <string> fileName.split('.').slice(0, -1).join('.');
   }
 
   private convertToPromise(fn: Function): ConvertedPromise {

@@ -101,7 +101,7 @@ export class MemoryFileSystem implements HayFileSystem {
   }
 
   public removeExtension(fileName: string): string {
-    return (<string> fileName.split('.').shift());
+    return <string> fileName.split('.').slice(0, -1).join('.');
   }
 
   public async unlink(fileName: string): Promise<void> {
