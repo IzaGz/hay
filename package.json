@@ -18,7 +18,7 @@
     "copy": "cp src/package.json dist/package.json",
     "lint": "tslint --project tsconfig.json",
     "prestart": "yarn run clean && yarn run copy",
-    "test": "TS_NODE_PROJECT=tsconfig.test.json yarn run lint && mocha --compilers ts:ts-node/register"
+    "test": "yarn run lint && TS_NODE_PROJECT=tsconfig.test.json mocha --compilers ts:ts-node/register"
   },
   "devDependencies": {
     "@types/chai": "^3.4.34",
